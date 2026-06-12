@@ -51,35 +51,53 @@ func main() {
 	// )
 
 	// SELECT (DQL)//
-	// rows, err := conn.Query(context.Background(), "SELECT id, name, email FROM users")
+	type User struct {
+		ID    int
+		Name  string
+		Email string
+	}
+
+	_, err = conn.Prepare(
+		context.Background(),
+		"get-users",
+		"SELECT * FROM users WHERE email LIKE '%gigpz%'",
+	)
+	if err != nil {
+		panic(err)
+	}
+
+	rows, _ := conn.Query(
+		context.Background(),
+		"get-users",
+	)
+
+	for rows.Next() {
+		var user User
+
+		rows.Scan(&user.ID, &user.Name, &user.Email)
+		fmt.Println(user)
+	}
+
+	// SELECT (DQL)//
+
+	// var user User
+
+	// _, err = conn.Prepare(
+	// 	context.Background(),
+	// 	"get-user-by-id",
+	// 	"SELECT id,name,email FROM users WHERE email=$1",
+	// )
 	// if err != nil {
 	// 	panic(err)
 	// }
 
-	// for rows.Next() {
-	// 	var id int
-	// 	var name string
-	// 	var email string
+	// conn.QueryRow(
+	// 	context.Background(),
+	// 	"get-user-by-id",
+	// 	"gigpz@example.com",
+	// ).Scan(&user.ID, &user.Name, &user.Email)
 
-	// 	rows.Scan(&id, &name, &email)
-	// 	fmt.Printf("ID: %d, Name: %s, Email: %s\n", id, name, email)
-	// }
-
-	// SELECT (DQL)//
-	var id int
-	var name string
-	var email string
-
-	err = conn.QueryRow(
-		context.Background(),
-		"SELECT id,name,email FROM users WHERE id=$1",
-		2,
-	).Scan(&id, &name, &email)
-
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("ID: %d, Name: %s, Email: %s\n", id, name, email)
+	// fmt.Printf("ID: %d, Name: %s, Email: %s\n", user.ID, user.Name, user.Email)
 
 	defer conn.Close(context.Background())
 
