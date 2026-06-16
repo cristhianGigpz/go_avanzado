@@ -1,22 +1,44 @@
 package main
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/jackc/pgx/v5"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
-	conn, err := pgx.Connect(
-		context.Background(),
-		"postgres://postgres:gigpz@localhost:5434/bd_tests",
-	)
 
+	dsn := "host=localhost user=postgres password=gigpz dbname=bd_tests port=5434 sslmode=disable"
+
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(err)
+		panic("failed to connect database")
 	}
+
+	println("Conectado correctamente a la base de datos")
+
+	type User struct {
+		ID    uint   `gorm:"primaryKey"`
+		Name  string `gorm:"size:100"`
+		Email string `gorm:"uniqueIndex;size:100"`
+	}
+
+	err = db.AutoMigrate(&User{})
+	if err != nil {
+		panic("failed to migrate database")
+	}
+	println("Migración de la tabla 'users' completada correctamente")
+
+	// conn, err := pgx.Connect(
+	// 	context.Background(),
+	// 	"postgres://postgres:gigpz@localhost:5434/bd_tests",
+	// )
+
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	// CREATE TABLE (DDL)//
 	// sql := `
@@ -79,32 +101,33 @@ func main() {
 	// }
 
 	// transacciones //
-	tx, err := conn.Begin(context.Background())
-	if err != nil {
-		panic(err)
-	}
+	// tx, err := conn.Begin(context.Background())
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	defer tx.Rollback(context.Background())
+	// defer tx.Rollback(context.Background())
 
-	_, err = tx.Exec(
-		context.Background(),
-		"UPDATE accounts SET balance=balance-100 WHERE id=1",
-	)
-	if err != nil {
-		panic(err)
-	}
+	// _, err = tx.Exec(
+	// 	context.Background(),
+	// 	"UPDATE accounts SET balance=balance-100 WHERE id=1",
+	// )
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	_, err = tx.Exec(
-		context.Background(),
-		"UPDATE accounts SET balance=balance+100 WHERE id=2",
-	)
+	// _, err = tx.Exec(
+	// 	context.Background(),
+	// 	"UPDATE accounts SET balance=balance+100 WHERE id=2",
+	// )
 
-	if err != nil {
-		panic(err)
-	}
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	tx.Commit(context.Background())
-	fmt.Println("Transacciones completada correctamente")
+	// tx.Commit(context.Background())
+	// fmt.Println("Transacciones completada correctamente")
+	///////////////////////////////////////////////////////
 
 	// type UserPost struct {
 	// 	UserName  string
@@ -171,7 +194,7 @@ func main() {
 
 	// fmt.Printf("Total users: %d\n", total)
 
-	defer conn.Close(context.Background())
+	//defer conn.Close(context.Background())
 
 	//fmt.Println("Conectado correctamente, tabla creada")
 	//fmt.Println("Conectado correctamente, fila insertada")
