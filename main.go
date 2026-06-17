@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -20,17 +21,101 @@ func main() {
 	println("Conectado correctamente a la base de datos")
 
 	type User struct {
-		ID    uint   `gorm:"primaryKey"`
-		Name  string `gorm:"size:100"`
-		Email string `gorm:"uniqueIndex;size:100"`
+		ID        uint   `gorm:"primaryKey"`
+		Name      string `gorm:"size:100"`
+		Email     string `gorm:"uniqueIndex;size:100"`
+		Age       int    `gorm:"default:18"`
+		CreatedAt time.Time
+		UpdatedAt time.Time
+		DeletedAt gorm.DeletedAt
 	}
 
-	err = db.AutoMigrate(&User{})
-	if err != nil {
-		panic("failed to migrate database")
-	}
-	println("Migración de la tabla 'users' completada correctamente")
+	// Migración de la tabla 'users' //
+	// err = db.AutoMigrate(&User{})
+	// if err != nil {
+	// 	panic("failed to migrate database")
+	// }
+	// println("Migración de la tabla 'users' completada correctamente")
 
+	// user := User{
+	// 	Name:  "Juan",
+	// 	Email: "juan@gmail.com",
+	// }
+
+	// Insertar un nuevo usuario CREATE//
+	// result := db.Create(&user)
+	// if result.Error != nil {
+	// 	panic("failed to insert user")
+	// }
+	// fmt.Printf("Usuario insertado con ID: %d\n", user.ID)
+	///////////////////////////////////////////////////////
+
+	//// LEER DATOS READ //
+	// SELECT * FROM users
+	// WHERE id = 1
+	// LIMIT 1;
+	// db.First(&user, 3)
+	// fmt.Printf("Usuario encontrado: ID: %d, Name: %s, Email: %s\n", user.ID, user.Name, user.Email)
+
+	// db.Where(
+	// 	"email = ?",
+	// 	"juan@gmail.com",
+	// ).First(&user)
+	// fmt.Printf("Usuario encontrado: ID: %d, Name: %s, Email: %s\n", user.ID, user.Name, user.Email)
+
+	var users []User
+	db.Order("id desc").Find(&users)
+	fmt.Println("Usuarios encontrados:")
+	for _, u := range users {
+		fmt.Printf("ID: %d, Name: %s, Email: %s\n", u.ID, u.Name, u.Email)
+	}
+
+	// db.Limit(1).
+	// 	Find(&users)
+	// fmt.Println("Usuarios encontrados:")
+	// for _, u := range users {
+	// 	fmt.Printf("ID: %d, Name: %s, Email: %s\n", u.ID, u.Name, u.Email)
+	// }
+
+	// db.Offset(20).
+	// 	Limit(10).
+	// 	Find(&users)
+
+	// db.Order("id desc").
+	// 	Find(&users)
+	// fmt.Println("Usuarios encontrados:")
+	// for _, u := range users {
+	// 	fmt.Printf("ID: %d, Name: %s, Email: %s\n", u.ID, u.Name, u.Email)
+	// }
+
+	// db.Select("name,email").
+	// 	Find(&users)
+	// fmt.Println("Usuarios encontrados:")
+	// for _, u := range users {
+	// 	fmt.Printf("Name: %s, Email: %s\n", u.Name, u.Email)
+	// }
+
+	// var total int64
+
+	// db.Model(&User{}).
+	// 	Count(&total)
+	// fmt.Printf("Total de usuarios: %d\n", total)
+
+	// UPDATE //
+	//actualiza un campo específico
+	//db.Model(&user).Where("id = ?", 1).Update("Name", "Gigpz")
+	//actualiza varios campos
+	//db.Model(&user).Where("id = ?", 1).Updates(User{Name: "Gigpz", Email: "gigpz@example.com", Age: 30})
+
+	//DELETE //
+	//db.Where("id = ?", 3).Delete(&User{})
+
+	// db.Delete(
+	// 	&User{},
+	// 	3,
+	// )
+
+	/////////////////////////////////////////////////////////////
 	// conn, err := pgx.Connect(
 	// 	context.Background(),
 	// 	"postgres://postgres:gigpz@localhost:5434/bd_tests",
