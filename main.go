@@ -20,27 +20,66 @@ func main() {
 
 	println("Conectado correctamente a la base de datos")
 
+	type Post struct {
+		ID     uint `gorm:"primaryKey"`
+		Title  string
+		UserID uint
+	}
+
+	type Role struct {
+		ID   uint
+		Name string
+	}
+
 	type User struct {
 		ID        uint   `gorm:"primaryKey"`
 		Name      string `gorm:"size:100"`
 		Email     string `gorm:"uniqueIndex;size:100"`
 		Age       int    `gorm:"default:18"`
+		Posts     []Post `gorm:"foreignKey:UserID"`
+		Roles     []Role `gorm:"many2many:user_roles"`
 		CreatedAt time.Time
 		UpdatedAt time.Time
 		DeletedAt gorm.DeletedAt
 	}
 
 	// Migración de la tabla 'users' //
-	// err = db.AutoMigrate(&User{})
+	// err = db.AutoMigrate(&User{}, &Post{}, &Role{})
 	// if err != nil {
 	// 	panic("failed to migrate database")
 	// }
-	// println("Migración de la tabla 'users' completada correctamente")
+	// println("Migración de las tablas 'users' y 'posts' completada correctamente")
 
 	// user := User{
 	// 	Name:  "Juan",
 	// 	Email: "juan@gmail.com",
 	// }
+
+	// Insertar un nuevo usuario con posts CREATE//
+	admin := Role{Name: "Admin"}
+	editor := Role{Name: "Editor"}
+
+	user := User{
+		Name:  "Jose",
+		Email: "jose@gmail.com",
+		Posts: []Post{
+			{Title: "Post 1"},
+			{Title: "Post 2"},
+			{Title: "Post 3"},
+		},
+		Roles: []Role{admin, editor},
+	}
+
+	db.Create(&user)
+
+	////////////////////////////////////////
+
+	// var user User
+
+	// db.Preload("Posts").
+	// 	First(&user, 2)
+
+	// fmt.Println(user.Posts)
 
 	// Insertar un nuevo usuario CREATE//
 	// result := db.Create(&user)
@@ -63,23 +102,28 @@ func main() {
 	// ).First(&user)
 	// fmt.Printf("Usuario encontrado: ID: %d, Name: %s, Email: %s\n", user.ID, user.Name, user.Email)
 
-	var users []User
-	db.Order("id desc").Find(&users)
-	fmt.Println("Usuarios encontrados:")
-	for _, u := range users {
-		fmt.Printf("ID: %d, Name: %s, Email: %s\n", u.ID, u.Name, u.Email)
-	}
+	// var users []User
+	// db.Find(&users)
+	// fmt.Println("Usuarios encontrados:")
+	// for _, u := range users {
+	// 	fmt.Printf("ID: %d, Name: %s, Email: %s\n", u.ID, u.Name, u.Email)
+	// }
 
-	// db.Limit(1).
+	///////////////////////////////////////////////////////////
+	// db.Limit(10).
 	// 	Find(&users)
 	// fmt.Println("Usuarios encontrados:")
 	// for _, u := range users {
 	// 	fmt.Printf("ID: %d, Name: %s, Email: %s\n", u.ID, u.Name, u.Email)
 	// }
 
-	// db.Offset(20).
+	// db.Offset(1).
 	// 	Limit(10).
 	// 	Find(&users)
+	// fmt.Println("Usuarios encontrados:")
+	// for _, u := range users {
+	// 	fmt.Printf("ID: %d, Name: %s, Email: %s\n", u.ID, u.Name, u.Email)
+	// }
 
 	// db.Order("id desc").
 	// 	Find(&users)
@@ -96,10 +140,10 @@ func main() {
 	// }
 
 	// var total int64
-
 	// db.Model(&User{}).
 	// 	Count(&total)
 	// fmt.Printf("Total de usuarios: %d\n", total)
+	///////////////////////////////////////////////////////////
 
 	// UPDATE //
 	//actualiza un campo específico
