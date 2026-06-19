@@ -8,10 +8,56 @@ import (
 	"gorm.io/gorm"
 )
 
+const dsn = "host=localhost user=postgres password=gigpz dbname=bd_tests port=5434 sslmode=disable"
+
+type Post struct {
+	ID     uint `gorm:"primaryKey"`
+	Title  string
+	UserID uint
+}
+
+type Role struct {
+	ID   uint
+	Name string
+}
+
+type User struct {
+	ID    uint   `gorm:"primaryKey"`
+	Name  string `gorm:"size:100"`
+	Email string `gorm:"uniqueIndex;size:100"`
+	Age   int    `gorm:"default:18"`
+	Posts []Post `gorm:"foreignKey:UserID"`
+	//Roles     []Role `gorm:"many2many:user_roles"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+	DeletedAt gorm.DeletedAt
+}
+
+type user_roles struct {
+	UserID uint
+	RoleID uint
+}
+
+func (u *User) BeforeCreate(tx *gorm.DB) error {
+
+	fmt.Println("Creando usuario")
+
+	return nil
+}
+
+func (u *User) AfterCreate(tx *gorm.DB) error {
+
+	fmt.Println("Usuario creado")
+
+	return nil
+}
+
+func Adults(db *gorm.DB) *gorm.DB {
+	return db.Where("age >= ?", 18)
+}
+
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
-
-	dsn := "host=localhost user=postgres password=gigpz dbname=bd_tests port=5434 sslmode=disable"
 
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
@@ -20,27 +66,33 @@ func main() {
 
 	println("Conectado correctamente a la base de datos")
 
-	type Post struct {
-		ID     uint `gorm:"primaryKey"`
-		Title  string
-		UserID uint
-	}
+	errT := db.Transaction(
+		func(tx *gorm.DB) error {
 
-	type Role struct {
-		ID   uint
-		Name string
-	}
+			user := User{
+				Name:  "Luisa",
+				Email: "luisa@gmail.com",
+			}
 
-	type User struct {
-		ID        uint   `gorm:"primaryKey"`
-		Name      string `gorm:"size:100"`
-		Email     string `gorm:"uniqueIndex;size:100"`
-		Age       int    `gorm:"default:18"`
-		Posts     []Post `gorm:"foreignKey:UserID"`
-		Roles     []Role `gorm:"many2many:user_roles"`
-		CreatedAt time.Time
-		UpdatedAt time.Time
-		DeletedAt gorm.DeletedAt
+			if err := tx.Create(&user).Error; err != nil {
+				return err
+			}
+
+			post := Post{
+				Title:  "Primer Post de Luisa",
+				UserID: user.ID,
+			}
+
+			if err := tx.Create(&post).Error; err != nil {
+				return err
+			}
+
+			return nil
+		},
+	)
+
+	if errT != nil {
+		fmt.Println("Rollback")
 	}
 
 	// Migración de la tabla 'users' //
@@ -50,36 +102,62 @@ func main() {
 	// }
 	// println("Migración de las tablas 'users' y 'posts' completada correctamente")
 
+	// Insertar un nuevo usuario CREATE//
 	// user := User{
 	// 	Name:  "Juan",
 	// 	Email: "juan@gmail.com",
 	// }
 
+	// Insertar un nuevo usuario con posts y roles CREATE//
+	// admin := Role{Name: "Admin"}
+	// editor := Role{Name: "Editor"}
+
+	// user := User{
+	// 	Name:  "Juan",
+	// 	Email: "juan@gmail.com",
+	// 	Posts: []Post{
+	// 		{Title: "Post 1"},
+	// 		{Title: "Post 2"},
+	// 		{Title: "Post 3"},
+	// 	},
+	// 	Roles: []Role{admin, editor},
+	// }
+	// db.Create(&user)
+
+	// var userWithRoles User
+	// db.Preload("Roles").
+	// 	First(&userWithRoles, 3)
+
+	// fmt.Printf("Usuario: %s, Roles: ", userWithRoles.Name)
+	// for _, role := range userWithRoles.Roles {
+	// 	fmt.Printf("%s ", role.Name)
+	// }
+
 	// Insertar un nuevo usuario con posts CREATE//
-	admin := Role{Name: "Admin"}
-	editor := Role{Name: "Editor"}
-
-	user := User{
-		Name:  "Jose",
-		Email: "jose@gmail.com",
-		Posts: []Post{
-			{Title: "Post 1"},
-			{Title: "Post 2"},
-			{Title: "Post 3"},
-		},
-		Roles: []Role{admin, editor},
-	}
-
-	db.Create(&user)
-
-	////////////////////////////////////////
+	// user := User{
+	// 	Name:  "cristhian",
+	// 	Email: "cristhian@gmail.com",
+	// 	Posts: []Post{
+	// 		{Title: "Post 1"},
+	// 		{Title: "Post 2"},
+	// 	},
+	// }
+	// db.Create(&user)
 
 	// var user User
-
 	// db.Preload("Posts").
 	// 	First(&user, 2)
-
 	// fmt.Println(user.Posts)
+	////////////////////////////////////////
+
+	// agregar roles a usuario existente CREATE//
+	// userWithRoles := user_roles{
+	// 	UserID: 3,
+	// 	RoleID: 2,
+	// }
+	// db.Create(&userWithRoles)
+
+	////////////////////////////////////////
 
 	// Insertar un nuevo usuario CREATE//
 	// result := db.Create(&user)
@@ -87,6 +165,15 @@ func main() {
 	// 	panic("failed to insert user")
 	// }
 	// fmt.Printf("Usuario insertado con ID: %d\n", user.ID)
+	///////////////////////////////////////////////////////
+
+	var users []User
+	db.Scopes(Adults).Find(&users)
+	fmt.Println("Usuarios adultos encontrados:")
+	for _, u := range users {
+		fmt.Printf("ID: %d, Name: %s, Email: %s, Age: %d\n", u.ID, u.Name, u.Email, u.Age)
+	}
+
 	///////////////////////////////////////////////////////
 
 	//// LEER DATOS READ //
