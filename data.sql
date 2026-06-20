@@ -53,3 +53,8 @@ CREATE TABLE accounts(
 SELECT * FROM accounts
 INSERT INTO accounts (balance, user_id) VALUES (1500.12, 1)
 INSERT INTO accounts (balance, user_id) VALUES (500.12, 2)
+
+SELECT * FROM users
+SELECT * FROM posts
+SELECT * FROM roles
+SELECT * FROM user_roles

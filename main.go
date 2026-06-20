@@ -2,9 +2,9 @@ package main
 
 import (
 	"fmt"
+	"go-avanzado/middleware"
 	"time"
 
-	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -59,41 +59,45 @@ func Adults(db *gorm.DB) *gorm.DB {
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
 
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	if err != nil {
-		panic("failed to connect database")
-	}
+	middleware.Init()
 
-	println("Conectado correctamente a la base de datos")
+	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// if err != nil {
+	// 	panic("failed to connect database")
+	// }
 
-	errT := db.Transaction(
-		func(tx *gorm.DB) error {
+	// println("Conectado correctamente a la base de datos")
 
-			user := User{
-				Name:  "Luisa",
-				Email: "luisa@gmail.com",
-			}
+	// errT := db.Transaction(
+	// 	func(tx *gorm.DB) error {
 
-			if err := tx.Create(&user).Error; err != nil {
-				return err
-			}
+	// 		user := User{
+	// 			Name:  "Luisa",
+	// 			Email: "luisa@gmail.com",
+	// 		}
 
-			post := Post{
-				Title:  "Primer Post de Luisa",
-				UserID: user.ID,
-			}
+	// 		if err := tx.Create(&user).Error; err != nil {
+	// 			return err
+	// 		}
 
-			if err := tx.Create(&post).Error; err != nil {
-				return err
-			}
+	// 		post := Post{
+	// 			Title:  "Primer Post de Luisa",
+	// 			UserID: user.ID,
+	// 		}
 
-			return nil
-		},
-	)
+	// 		if err := tx.Create(&post).Error; err != nil {
+	// 			return err
+	// 		}
 
-	if errT != nil {
-		fmt.Println("Rollback")
-	}
+	// 		return nil
+	// 	},
+	// )
+
+	// if errT != nil {
+	// 	fmt.Println("Rollback")
+	// }
+
+	//////////////////////////////////////////////////////////////////
 
 	// Migración de la tabla 'users' //
 	// err = db.AutoMigrate(&User{}, &Post{}, &Role{})
@@ -167,12 +171,12 @@ func main() {
 	// fmt.Printf("Usuario insertado con ID: %d\n", user.ID)
 	///////////////////////////////////////////////////////
 
-	var users []User
-	db.Scopes(Adults).Find(&users)
-	fmt.Println("Usuarios adultos encontrados:")
-	for _, u := range users {
-		fmt.Printf("ID: %d, Name: %s, Email: %s, Age: %d\n", u.ID, u.Name, u.Email, u.Age)
-	}
+	// var users []User
+	// db.Scopes(Adults).Find(&users)
+	// fmt.Println("Usuarios adultos encontrados:")
+	// for _, u := range users {
+	// 	fmt.Printf("ID: %d, Name: %s, Email: %s, Age: %d\n", u.ID, u.Name, u.Email, u.Age)
+	// }
 
 	///////////////////////////////////////////////////////
 
