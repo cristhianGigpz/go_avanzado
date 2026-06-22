@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -38,6 +39,20 @@ func Init() {
 
 	//r.Use(MyMiddleware())
 	r.Use(LoggerMiddleware())
+	r.Use(ErrorMiddleware())
+	r.Use(RecoveryMiddleware())
+	r.Use(CORSMiddleware())
+
+	protected := r.Group("/api")
+
+	protected.Use(AuthMiddleware())
+
+	protected.GET("/profile", func(c *gin.Context) {
+
+		c.JSON(200, gin.H{
+			"message": "Perfil privado",
+		})
+	})
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
@@ -45,10 +60,15 @@ func Init() {
 		})
 	})
 
-	r.GET("/users", MyMiddleware(), func(c *gin.Context) {
+	r.GET("/users", HeadersMiddleware(), func(c *gin.Context) {
 		c.JSON(200, gin.H{
 			"message": "Esta es la ruta para ver los usuarios",
 		})
+	})
+
+	r.GET("/error", func(c *gin.Context) {
+
+		c.Error(errors.New("error interno"))
 	})
 
 	r.Run(":8080")
