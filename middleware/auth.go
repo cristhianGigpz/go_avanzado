@@ -32,6 +32,7 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		c.Set("userID", "12345")
 		c.Next()
 	}
 }

@@ -38,10 +38,16 @@ func Init() {
 	r := gin.New()
 
 	//r.Use(MyMiddleware())
-	r.Use(LoggerMiddleware())
-	r.Use(ErrorMiddleware())
-	r.Use(RecoveryMiddleware())
-	r.Use(CORSMiddleware())
+	r.Use(
+		LoggerMiddleware(),
+		RecoveryMiddleware(),
+		CORSMiddleware(),
+		RateLimitMiddleware(),
+	)
+	//r.Use(ErrorMiddleware())
+	// r.Use(RecoveryMiddleware())
+	// r.Use(CORSMiddleware())
+	// r.Use(RateLimitMiddleware())
 
 	protected := r.Group("/api")
 
@@ -51,6 +57,7 @@ func Init() {
 
 		c.JSON(200, gin.H{
 			"message": "Perfil privado",
+			"userID":  c.GetString("userID"),
 		})
 	})
 
