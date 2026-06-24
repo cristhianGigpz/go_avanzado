@@ -1,10 +1,12 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"go-avanzado/middleware"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
 
@@ -56,10 +58,57 @@ func Adults(db *gorm.DB) *gorm.DB {
 	return db.Where("age >= ?", 18)
 }
 
+func Init() {
+	r := gin.New()
+
+	//r.Use(MyMiddleware())
+	r.Use(
+		middleware.LoggerMiddleware(),
+		middleware.RecoveryMiddleware(),
+		middleware.CORSMiddleware(),
+		middleware.RateLimitMiddleware(),
+	)
+	//r.Use(ErrorMiddleware())
+	// r.Use(RecoveryMiddleware())
+	// r.Use(CORSMiddleware())
+	// r.Use(RateLimitMiddleware())
+
+	protected := r.Group("/api")
+
+	protected.Use(middleware.AuthMiddleware())
+
+	protected.GET("/profile", func(c *gin.Context) {
+
+		c.JSON(200, gin.H{
+			"message": "Perfil privado",
+			"userID":  c.GetString("userID"),
+		})
+	})
+
+	r.GET("/", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "Hola Go Avanzado !",
+		})
+	})
+
+	r.GET("/users", middleware.HeadersMiddleware(), func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "Esta es la ruta para ver los usuarios",
+		})
+	})
+
+	r.GET("/error", func(c *gin.Context) {
+
+		c.Error(errors.New("error interno"))
+	})
+
+	r.Run(":8080")
+}
+
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
 
-	middleware.Init()
+	Init()
 
 	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	// if err != nil {
@@ -67,6 +116,8 @@ func main() {
 	// }
 
 	// println("Conectado correctamente a la base de datos")
+
+	//////////////////////////////////////////////////////////////////
 
 	// errT := db.Transaction(
 	// 	func(tx *gorm.DB) error {
@@ -106,12 +157,19 @@ func main() {
 	// }
 	// println("Migración de las tablas 'users' y 'posts' completada correctamente")
 
+	////////////////////////////////////////
 	// Insertar un nuevo usuario CREATE//
 	// user := User{
 	// 	Name:  "Juan",
 	// 	Email: "juan@gmail.com",
 	// }
+	// result := db.Create(&user)
+	// if result.Error != nil {
+	// 	panic("failed to insert user")
+	// }
+	// fmt.Printf("Usuario insertado con ID: %d\n", user.ID)
 
+	////////////////////////////////////////
 	// Insertar un nuevo usuario con posts y roles CREATE//
 	// admin := Role{Name: "Admin"}
 	// editor := Role{Name: "Editor"}
@@ -127,6 +185,7 @@ func main() {
 	// 	Roles: []Role{admin, editor},
 	// }
 	// db.Create(&user)
+	////////////////////////////////////////
 
 	// var userWithRoles User
 	// db.Preload("Roles").
@@ -136,6 +195,7 @@ func main() {
 	// for _, role := range userWithRoles.Roles {
 	// 	fmt.Printf("%s ", role.Name)
 	// }
+	////////////////////////////////////////
 
 	// Insertar un nuevo usuario con posts CREATE//
 	// user := User{
@@ -161,16 +221,7 @@ func main() {
 	// }
 	// db.Create(&userWithRoles)
 
-	////////////////////////////////////////
-
-	// Insertar un nuevo usuario CREATE//
-	// result := db.Create(&user)
-	// if result.Error != nil {
-	// 	panic("failed to insert user")
-	// }
-	// fmt.Printf("Usuario insertado con ID: %d\n", user.ID)
-	///////////////////////////////////////////////////////
-
+	////////////////////////CONSULTAS PREPARADAS////////////////////
 	// var users []User
 	// db.Scopes(Adults).Find(&users)
 	// fmt.Println("Usuarios adultos encontrados:")

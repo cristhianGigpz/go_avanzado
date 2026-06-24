@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"errors"
 	"fmt"
 	"time"
 
@@ -32,51 +31,4 @@ func LoggerMiddleware() gin.HandlerFunc {
 			duration,
 		)
 	}
-}
-
-func Init() {
-	r := gin.New()
-
-	//r.Use(MyMiddleware())
-	r.Use(
-		LoggerMiddleware(),
-		RecoveryMiddleware(),
-		CORSMiddleware(),
-		RateLimitMiddleware(),
-	)
-	//r.Use(ErrorMiddleware())
-	// r.Use(RecoveryMiddleware())
-	// r.Use(CORSMiddleware())
-	// r.Use(RateLimitMiddleware())
-
-	protected := r.Group("/api")
-
-	protected.Use(AuthMiddleware())
-
-	protected.GET("/profile", func(c *gin.Context) {
-
-		c.JSON(200, gin.H{
-			"message": "Perfil privado",
-			"userID":  c.GetString("userID"),
-		})
-	})
-
-	r.GET("/", func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "Hola Go Avanzado !",
-		})
-	})
-
-	r.GET("/users", HeadersMiddleware(), func(c *gin.Context) {
-		c.JSON(200, gin.H{
-			"message": "Esta es la ruta para ver los usuarios",
-		})
-	})
-
-	r.GET("/error", func(c *gin.Context) {
-
-		c.Error(errors.New("error interno"))
-	})
-
-	r.Run(":8080")
 }
