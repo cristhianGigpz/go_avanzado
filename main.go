@@ -4,9 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"go-avanzado/middleware"
+	security "go-avanzado/segurity"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -24,11 +26,12 @@ type Role struct {
 }
 
 type User struct {
-	ID    uint   `gorm:"primaryKey"`
-	Name  string `gorm:"size:100"`
-	Email string `gorm:"uniqueIndex;size:100"`
-	Age   int    `gorm:"default:18"`
-	Posts []Post `gorm:"foreignKey:UserID"`
+	ID       uint   `gorm:"primaryKey"`
+	Name     string `gorm:"size:100"`
+	Email    string `gorm:"uniqueIndex;size:100"`
+	Age      int    `gorm:"default:18"`
+	Password string
+	//Posts []Post `gorm:"foreignKey:UserID"`
 	//Roles     []Role `gorm:"many2many:user_roles"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
@@ -58,7 +61,50 @@ func Adults(db *gorm.DB) *gorm.DB {
 	return db.Where("age >= ?", 18)
 }
 
-func Init() {
+func RegisterUser(c *gin.Context, db *gorm.DB) {
+
+	var body struct {
+		Name     string
+		Email    string
+		Age      int
+		Password string
+	}
+
+	c.BindJSON(&body)
+
+	hashedPassword, err := security.HashPassword(
+		body.Password,
+	)
+
+	if err != nil {
+		c.JSON(500, gin.H{
+			"error": "Error hashing password",
+		})
+		return
+	}
+
+	user := User{
+		Name:     body.Name,
+		Email:    body.Email,
+		Age:      body.Age,
+		Password: hashedPassword,
+	}
+
+	result := db.Create(&user)
+
+	if result.Error != nil {
+		c.JSON(500, gin.H{
+			"error": "Error creating user",
+		})
+		return
+	}
+
+	c.JSON(201, gin.H{
+		"message": "Usuario creado",
+	})
+}
+
+func Init(db *gorm.DB) {
 	r := gin.New()
 
 	//r.Use(MyMiddleware())
@@ -97,6 +143,10 @@ func Init() {
 		})
 	})
 
+	r.POST("/register", func(c *gin.Context) {
+		RegisterUser(c, db)
+	})
+
 	r.GET("/error", func(c *gin.Context) {
 
 		c.Error(errors.New("error interno"))
@@ -105,17 +155,29 @@ func Init() {
 	r.Run(":8080")
 }
 
+// Flujo JWT
+// Login
+// ↓
+// Servidor valida usuario
+// ↓
+// Servidor genera token
+// ↓
+// Cliente guarda token
+// ↓
+// Cliente envía token en cada request
+// ↓
+// Servidor valida token
+
+// eyJhbGciOixxxfgsfsfdsfsssss
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic("failed to connect database")
+	}
+	println("Conectado correctamente a la base de datos")
 
-	Init()
-
-	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	// if err != nil {
-	// 	panic("failed to connect database")
-	// }
-
-	// println("Conectado correctamente a la base de datos")
+	Init(db)
 
 	//////////////////////////////////////////////////////////////////
 
