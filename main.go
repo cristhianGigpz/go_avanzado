@@ -4,8 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"go-avanzado/middleware"
-	security "go-avanzado/segurity"
-	"time"
+	"go-avanzado/services"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/driver/postgres"
@@ -14,95 +13,52 @@ import (
 
 const dsn = "host=localhost user=postgres password=gigpz dbname=bd_tests port=5434 sslmode=disable"
 
-type Post struct {
-	ID     uint `gorm:"primaryKey"`
-	Title  string
-	UserID uint
-}
+// type Post struct {
+// 	ID     uint `gorm:"primaryKey"`
+// 	Title  string
+// 	UserID uint
+// }
 
-type Role struct {
-	ID   uint
-	Name string
-}
+// type Role struct {
+// 	ID   uint
+// 	Name string
+// }
 
-type User struct {
-	ID       uint   `gorm:"primaryKey"`
-	Name     string `gorm:"size:100"`
-	Email    string `gorm:"uniqueIndex;size:100"`
-	Age      int    `gorm:"default:18"`
-	Password string
-	//Posts []Post `gorm:"foreignKey:UserID"`
-	//Roles     []Role `gorm:"many2many:user_roles"`
-	CreatedAt time.Time
-	UpdatedAt time.Time
-	DeletedAt gorm.DeletedAt
-}
+// type User struct {
+// 	ID       uint   `gorm:"primaryKey"`
+// 	Name     string `gorm:"size:100"`
+// 	Email    string `gorm:"uniqueIndex;size:100"`
+// 	Age      int    `gorm:"default:18"`
+// 	Password string
+// 	//Posts []Post `gorm:"foreignKey:UserID"`
+// 	//Roles     []Role `gorm:"many2many:user_roles"`
+// 	CreatedAt time.Time
+// 	UpdatedAt time.Time
+// 	DeletedAt gorm.DeletedAt
+// }
 
-type user_roles struct {
-	UserID uint
-	RoleID uint
-}
+// type user_roles struct {
+// 	UserID uint
+// 	RoleID uint
+// }
 
-func (u *User) BeforeCreate(tx *gorm.DB) error {
+// func (u *User) BeforeCreate(tx *gorm.DB) error {
 
-	fmt.Println("Creando usuario")
+// 	fmt.Println("Creando usuario")
 
-	return nil
-}
+// 	return nil
+// }
 
-func (u *User) AfterCreate(tx *gorm.DB) error {
+// func (u *User) AfterCreate(tx *gorm.DB) error {
 
-	fmt.Println("Usuario creado")
+// 	fmt.Println("Usuario creado")
 
-	return nil
-}
+// 	return nil
+// }
 
-func Adults(db *gorm.DB) *gorm.DB {
-	return db.Where("age >= ?", 18)
-}
-
-func RegisterUser(c *gin.Context, db *gorm.DB) {
-
-	var body struct {
-		Name     string
-		Email    string
-		Age      int
-		Password string
-	}
-
-	c.BindJSON(&body)
-
-	hashedPassword, err := security.HashPassword(
-		body.Password,
-	)
-
-	if err != nil {
-		c.JSON(500, gin.H{
-			"error": "Error hashing password",
-		})
-		return
-	}
-
-	user := User{
-		Name:     body.Name,
-		Email:    body.Email,
-		Age:      body.Age,
-		Password: hashedPassword,
-	}
-
-	result := db.Create(&user)
-
-	if result.Error != nil {
-		c.JSON(500, gin.H{
-			"error": "Error creating user",
-		})
-		return
-	}
-
-	c.JSON(201, gin.H{
-		"message": "Usuario creado",
-	})
-}
+// func Adults(db *gorm.DB) *gorm.DB {
+// 	return db.Where("age >= ?", 18)
+// }
 
 func Init(db *gorm.DB) {
 	r := gin.New()
@@ -121,13 +77,15 @@ func Init(db *gorm.DB) {
 
 	protected := r.Group("/api")
 
-	protected.Use(middleware.AuthMiddleware())
+	protected.Use(middleware.JWTMiddleware())
 
 	protected.GET("/profile", func(c *gin.Context) {
 
+		userID, _ := c.Get("user_id")
+
 		c.JSON(200, gin.H{
 			"message": "Perfil privado",
-			"userID":  c.GetString("userID"),
+			"userID":  userID,
 		})
 	})
 
@@ -144,7 +102,11 @@ func Init(db *gorm.DB) {
 	})
 
 	r.POST("/register", func(c *gin.Context) {
-		RegisterUser(c, db)
+		services.RegisterUser(c, db)
+	})
+
+	r.POST("/login", func(c *gin.Context) {
+		services.LoginUser(c, db)
 	})
 
 	r.GET("/error", func(c *gin.Context) {
