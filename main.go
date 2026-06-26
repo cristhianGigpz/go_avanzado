@@ -80,12 +80,19 @@ func Init(db *gorm.DB) {
 	protected.Use(middleware.JWTMiddleware())
 
 	protected.GET("/profile", func(c *gin.Context) {
-
 		userID, _ := c.Get("user_id")
+		role, _ := c.Get("role")
 
 		c.JSON(200, gin.H{
 			"message": "Perfil privado",
 			"userID":  userID,
+			"role":    role,
+		})
+	})
+
+	protected.GET("/dashboard", middleware.AdminMiddleware(), func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"message": "Bienvenido al panel de administración",
 		})
 	})
 
@@ -118,19 +125,26 @@ func Init(db *gorm.DB) {
 }
 
 // Flujo JWT
+// Registro
+// ↓
+// Hash password
+// ↓
+// Guardar usuario
+// ↓
 // Login
 // ↓
-// Servidor valida usuario
+// Validar password
 // ↓
-// Servidor genera token
+// Generar JWT
 // ↓
-// Cliente guarda token
+// Frontend guarda token
 // ↓
-// Cliente envía token en cada request
+// Frontend envía token
 // ↓
-// Servidor valida token
+// Middleware valida JWT
+// ↓
+// Acceso autorizado
 
-// eyJhbGciOixxxfgsfsfdsfsssss
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})

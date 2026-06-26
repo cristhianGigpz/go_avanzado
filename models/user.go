@@ -12,6 +12,7 @@ type User struct {
 	Email     string `gorm:"uniqueIndex;size:100"`
 	Age       int    `gorm:"default:18"`
 	Password  string
+	Role      string `gorm:"default:'user'"`
 	CreatedAt time.Time
 	UpdatedAt time.Time
 	DeletedAt gorm.DeletedAt

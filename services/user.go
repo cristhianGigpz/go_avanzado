@@ -15,6 +15,7 @@ func RegisterUser(c *gin.Context, db *gorm.DB) {
 		Email    string
 		Age      int
 		Password string
+		Role     string
 	}
 
 	c.BindJSON(&body)
@@ -35,6 +36,7 @@ func RegisterUser(c *gin.Context, db *gorm.DB) {
 		Email:    body.Email,
 		Age:      body.Age,
 		Password: hashedPassword,
+		Role:     body.Role,
 	}
 
 	result := db.Create(&user)
@@ -94,6 +96,7 @@ func LoginUser(c *gin.Context, db *gorm.DB) {
 		ID:    user.ID,
 		Name:  user.Name,
 		Email: user.Email,
+		Role:  user.Role,
 	})
 
 	if err != nil {
@@ -108,4 +111,22 @@ func LoginUser(c *gin.Context, db *gorm.DB) {
 	c.JSON(200, gin.H{
 		"token": token,
 	})
+}
+
+func RefreshToken(c *gin.Context) {
+
+	refreshToken := c.GetHeader(
+		"X-Refresh-Token",
+	)
+
+	// Validar refresh token
+	if refreshToken == "" {
+
+		c.JSON(401, gin.H{
+			"error": "Refresh token requerido",
+		})
+		return
+	}
+
+	// Generar nuevo access token
 }
