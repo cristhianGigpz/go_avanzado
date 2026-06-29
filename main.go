@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"fmt"
+	"go-avanzado/handler"
 	"go-avanzado/middleware"
 	"go-avanzado/services"
 
@@ -119,6 +120,10 @@ func Init(db *gorm.DB) {
 	r.GET("/error", func(c *gin.Context) {
 
 		c.Error(errors.New("error interno"))
+	})
+
+	r.GET("/hello", func(c *gin.Context) {
+		handler.HelloHandler(c)
 	})
 
 	r.Run(":8080")
