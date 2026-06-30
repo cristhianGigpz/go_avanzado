@@ -1,10 +1,13 @@
-package main
+package tests
 
-import "testing"
+import (
+	"go-avanzado/services"
+	"testing"
+)
 
 func TestIsAdult(t *testing.T) {
 
-	service := UserService{}
+	service := services.UserService{}
 
 	result := service.IsAdult(20)
 

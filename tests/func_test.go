@@ -1,18 +1,21 @@
-package main
+package tests
 
-import "testing"
+import (
+	"go-avanzado/utils"
+	"testing"
+)
 
 // func TestSum(t *testing.T) {
 
 // 	result := Sum(2, 3)
 
-// 	if result != 5 {
-// 		t.Errorf(
-// 			"expected 5 but got %d",
-// 			result,
-// 		)
-// 	}
-// }
+//		if result != 5 {
+//			t.Errorf(
+//				"expected 5 but got %d",
+//				result,
+//			)
+//		}
+//	}
 func TestSum(t *testing.T) {
 
 	tests := []struct {
@@ -43,7 +46,7 @@ func TestSum(t *testing.T) {
 
 	for _, test := range tests {
 
-		result := Sum(test.a, test.b)
+		result := utils.Sum(test.a, test.b)
 
 		if result != test.expected {
 
