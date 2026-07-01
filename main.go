@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"go-avanzado/handler"
@@ -8,7 +9,7 @@ import (
 	"go-avanzado/services"
 
 	"github.com/gin-gonic/gin"
-	"gorm.io/driver/postgres"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/gorm"
 )
 
@@ -149,17 +150,56 @@ func Init(db *gorm.DB) {
 // Middleware valida JWT
 // ↓
 // Acceso autorizado
+var ctx = context.Background()
 
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
-	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	// if err != nil {
+	// 	panic("failed to connect database")
+	// }
+	// println("Conectado correctamente a la base de datos")
+
+	// Init(db)
+	//////////////////////////////////////////////////////////////////
+	rdb := redis.NewClient(
+		&redis.Options{
+			Addr: "localhost:6379",
+		},
+	)
+
+	err := rdb.Ping(ctx).Err()
+
 	if err != nil {
-		panic("failed to connect database")
+		panic(err)
 	}
-	println("Conectado correctamente a la base de datos")
 
-	Init(db)
+	fmt.Println("Redis conectado")
 
+	err = rdb.Set(
+		ctx,
+		"user:1",
+		"Juan",
+		redis.KeepTTL,
+	).Err()
+
+	value, err := rdb.Get(
+		ctx,
+		"user:1",
+	).Result()
+
+	println("Valor de user:1:", value)
+
+	rdb.Del(
+		ctx,
+		"user:1",
+	)
+
+	value, err = rdb.Get(
+		ctx,
+		"user:1",
+	).Result()
+	println("Valor de user:1:", value)
 	//////////////////////////////////////////////////////////////////
 
 	// errT := db.Transaction(
