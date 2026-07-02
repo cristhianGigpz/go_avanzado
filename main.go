@@ -2,14 +2,18 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"go-avanzado/handler"
 	"go-avanzado/middleware"
+	"go-avanzado/models"
 	"go-avanzado/services"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -34,6 +38,7 @@ const dsn = "host=localhost user=postgres password=gigpz dbname=bd_tests port=54
 // 	Password string
 // 	//Posts []Post `gorm:"foreignKey:UserID"`
 // 	//Roles     []Role `gorm:"many2many:user_roles"`
+//	Role      string `gorm:"default:'user'"`
 // 	CreatedAt time.Time
 // 	UpdatedAt time.Time
 // 	DeletedAt gorm.DeletedAt
@@ -64,6 +69,18 @@ const dsn = "host=localhost user=postgres password=gigpz dbname=bd_tests port=54
 
 func Init(db *gorm.DB) {
 	r := gin.New()
+	/////////////////////////////
+	rdb := redis.NewClient(
+		&redis.Options{
+			Addr: "localhost:6379",
+		},
+	)
+	err := rdb.Ping(ctx).Err()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println("Redis conectado")
+	/////////////////////////////
 
 	//r.Use(MyMiddleware())
 	r.Use(
@@ -110,6 +127,97 @@ func Init(db *gorm.DB) {
 		})
 	})
 
+	////////////////////////////////////////////////////////////
+	// Flujo:
+	// Request
+	// ↓
+	// Buscar en Redis
+	// ↓
+	// Existe → responder
+	// ↓
+	// No existe → consultar DB
+	// ↓
+	// Guardar en Redis
+	// ↓
+	// Responder
+	r.GET("/user/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		cacheKey := "user:" + id
+
+		//Buscar en cache
+		cached, err := rdb.Get(
+			ctx,
+			cacheKey,
+		).Result()
+
+		if err == nil {
+
+			c.JSON(200, gin.H{
+				"source": "cache",
+				"data":   cached,
+			})
+
+			return
+		}
+
+		//Buscar en DB
+		var user models.User
+
+		db.First(&user, id)
+
+		//Guardar en Redis
+		jsonUser, _ := json.Marshal(user)
+		rdb.Set(
+			ctx,
+			cacheKey,
+			jsonUser,
+			time.Minute*5,
+		)
+
+		//Responder
+		c.JSON(200, gin.H{
+			"source": "database",
+			"data":   user,
+		})
+
+	})
+	//////////----------------------------------////////////////
+	r.PUT("/user/:id", func(c *gin.Context) {
+		id := c.Param("id")
+		cacheKey := "user:" + id
+
+		// 1. Recibir los nuevos datos desde el cuerpo de la petición (JSON)
+		var updatedData models.User
+		if err := c.ShouldBindJSON(&updatedData); err != nil {
+			c.JSON(400, gin.H{"error": "Datos inválidos"})
+			return
+		}
+
+		// 2. Buscar el usuario existente en la base de datos
+		var user models.User
+		if err := db.First(&user, id).Error; err != nil {
+			c.JSON(404, gin.H{"error": "Usuario no encontrado"})
+			return
+		}
+
+		// 3. Actualizar los campos en la base de datos
+		db.Model(&user).Updates(updatedData)
+
+		// 4. INVALIDACIÓN DE CACHÉ: Eliminar la clave vieja de Redis
+		err := rdb.Del(ctx, cacheKey).Err()
+		if err != nil {
+			println("Error al borrar caché:", err.Error())
+		}
+
+		// 5. Responder al cliente
+		c.JSON(200, gin.H{
+			"message": "Usuario actualizado y caché invalidada",
+			"data":    user,
+		})
+	})
+
+	////////////////////////////////////////////////////////////
+
 	r.POST("/register", func(c *gin.Context) {
 		services.RegisterUser(c, db)
 	})
@@ -154,52 +262,53 @@ var ctx = context.Background()
 
 func main() {
 	fmt.Println("Hello World, GO avanzado !")
-	// db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
-	// if err != nil {
-	// 	panic("failed to connect database")
-	// }
-	// println("Conectado correctamente a la base de datos")
-
-	// Init(db)
-	//////////////////////////////////////////////////////////////////
-	rdb := redis.NewClient(
-		&redis.Options{
-			Addr: "localhost:6379",
-		},
-	)
-
-	err := rdb.Ping(ctx).Err()
-
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		panic(err)
+		panic("failed to connect database")
 	}
+	println("Conectado correctamente a la base de datos")
 
-	fmt.Println("Redis conectado")
+	Init(db)
+	//////////////////////////////////////////////////////////////////
+	// rdb := redis.NewClient(
+	// 	&redis.Options{
+	// 		Addr: "localhost:6379",
+	// 	},
+	// )
 
-	err = rdb.Set(
-		ctx,
-		"user:1",
-		"Juan",
-		redis.KeepTTL,
-	).Err()
+	// err := rdb.Ping(ctx).Err()
 
-	value, err := rdb.Get(
-		ctx,
-		"user:1",
-	).Result()
+	// if err != nil {
+	// 	panic(err)
+	// }
 
-	println("Valor de user:1:", value)
+	// fmt.Println("Redis conectado")
 
-	rdb.Del(
-		ctx,
-		"user:1",
-	)
+	// err = rdb.Set(
+	// 	ctx,
+	// 	"user:1",
+	// 	"Juan",
+	// 	redis.KeepTTL,
+	// ).Err()
 
-	value, err = rdb.Get(
-		ctx,
-		"user:1",
-	).Result()
-	println("Valor de user:1:", value)
+	// value, err := rdb.Get(
+	// 	ctx,
+	// 	"user:1",
+	// ).Result()
+
+	// println("Valor de user:1:", value)
+
+	// rdb.Del(
+	// 	ctx,
+	// 	"user:1",
+	// )
+
+	// value, err = rdb.Get(
+	// 	ctx,
+	// 	"user:1",
+	// ).Result()
+	// println("Valor de user:1:", value)
+
 	//////////////////////////////////////////////////////////////////
 
 	// errT := db.Transaction(
@@ -243,8 +352,8 @@ func main() {
 	////////////////////////////////////////
 	// Insertar un nuevo usuario CREATE//
 	// user := User{
-	// 	Name:  "Juan",
-	// 	Email: "juan@gmail.com",
+	// 	Name:  "Maria",
+	// 	Email: "maria@gmail.com",
 	// }
 	// result := db.Create(&user)
 	// if result.Error != nil {
