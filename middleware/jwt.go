@@ -1,14 +1,16 @@
 package middleware
 
 import (
+	"context"
 	"go-avanzado/security"
 	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
 )
 
-func JWTMiddleware() gin.HandlerFunc {
+func JWTMiddleware(rdb *redis.Client, ctx context.Context) gin.HandlerFunc {
 
 	return func(c *gin.Context) {
 
@@ -42,6 +44,22 @@ func JWTMiddleware() gin.HandlerFunc {
 
 			c.JSON(401, gin.H{
 				"error": "Token inválido",
+			})
+
+			c.Abort()
+
+			return
+		}
+
+		_, errT := rdb.Get(
+			ctx,
+			tokenString,
+		).Result()
+
+		if errT == nil {
+
+			c.JSON(401, gin.H{
+				"error": "token invalidado",
 			})
 
 			c.Abort()

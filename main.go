@@ -9,6 +9,7 @@ import (
 	"go-avanzado/middleware"
 	"go-avanzado/models"
 	"go-avanzado/services"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -96,7 +97,7 @@ func Init(db *gorm.DB) {
 
 	protected := r.Group("/api")
 
-	protected.Use(middleware.JWTMiddleware())
+	protected.Use(middleware.JWTMiddleware(rdb, ctx))
 
 	protected.GET("/profile", func(c *gin.Context) {
 		userID, _ := c.Get("user_id")
@@ -226,6 +227,46 @@ func Init(db *gorm.DB) {
 		services.LoginUser(c, db)
 	})
 
+	r.GET("/logout", func(c *gin.Context) {
+		authHeader := c.GetHeader(
+			"Authorization",
+		)
+		if authHeader == "" {
+
+			c.JSON(401, gin.H{
+				"error": "Token requerido",
+			})
+
+			c.Abort()
+
+			return
+		}
+
+		tokenString := strings.Replace(
+			authHeader,
+			"Bearer ",
+			"",
+			1,
+		)
+
+		if err := rdb.Set(
+			ctx,
+			tokenString,
+			"blacklisted",
+			time.Hour*24,
+		).Err(); err != nil {
+			c.JSON(500, gin.H{
+				"error": "No se pudo invalidar el token",
+			})
+			return
+		}
+
+		c.JSON(200, gin.H{
+			"message": "Token invalidado correctamente, sesión cerrada",
+		})
+
+	})
+
 	r.GET("/error", func(c *gin.Context) {
 
 		c.Error(errors.New("error interno"))
@@ -233,6 +274,10 @@ func Init(db *gorm.DB) {
 
 	r.GET("/hello", func(c *gin.Context) {
 		handler.HelloHandler(c)
+	})
+
+	r.GET("/ping", middleware.RateLimiterMiddleware(rdb, ctx), func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "pong"})
 	})
 
 	r.Run(":8080")
