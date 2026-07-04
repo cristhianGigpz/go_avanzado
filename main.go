@@ -9,10 +9,12 @@ import (
 	"go-avanzado/middleware"
 	"go-avanzado/models"
 	"go-avanzado/services"
+	"net/http"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
 	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -64,9 +66,48 @@ const dsn = "host=localhost user=postgres password=gigpz dbname=bd_tests port=54
 // 	return nil
 // }
 
-// func Adults(db *gorm.DB) *gorm.DB {
-// 	return db.Where("age >= ?", 18)
-// }
+//	func Adults(db *gorm.DB) *gorm.DB {
+//		return db.Where("age >= ?", 18)
+//	}
+var upgrader = websocket.Upgrader{
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
+}
+
+func WebSocketHandler(c *gin.Context) {
+
+	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	//responder con un mensaje de bienvenida
+	welcomeMessage := "Bienvenido al WebSocket!"
+	err = conn.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
+	if err != nil {
+		return
+	}
+
+	// Leer mensajes en bucle y responder/echo
+	for {
+		mt, message, err := conn.ReadMessage()
+		if err != nil {
+			// cliente desconectado o error de lectura
+			return
+		}
+
+		// Aquí solo hacemos un eco y logueamos el mensaje
+		fmt.Printf("Mensaje recibido: %s\n", string(message))
+
+		err = conn.WriteMessage(mt, message)
+		if err != nil {
+			return
+		}
+	}
+
+}
 
 func Init(db *gorm.DB) {
 	r := gin.New()
@@ -115,6 +156,10 @@ func Init(db *gorm.DB) {
 			"message": "Bienvenido al panel de administración",
 		})
 	})
+
+	//websocket//
+	r.GET("/ws", WebSocketHandler)
+	//////////////////////////////
 
 	r.GET("/", func(c *gin.Context) {
 		c.JSON(200, gin.H{
