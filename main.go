@@ -75,36 +75,61 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+var clients = make(map[*websocket.Conn]bool)
+
+type Message struct {
+	Username string `json:"username"`
+	Message  string `json:"message"`
+}
+
 func WebSocketHandler(c *gin.Context) {
 
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
 	}
-	defer conn.Close()
 
 	//responder con un mensaje de bienvenida
-	welcomeMessage := "Bienvenido al WebSocket!"
-	err = conn.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
-	if err != nil {
-		return
-	}
+	// welcomeMessage := "Bienvenido al WebSocket!"
+	// err = conn.WriteMessage(websocket.TextMessage, []byte(welcomeMessage))
+	// if err != nil {
+	// 	return
+	// }
+
+	clients[conn] = true
+
+	defer func() {
+		delete(clients, conn)
+		conn.Close()
+	}()
 
 	// Leer mensajes en bucle y responder/echo
 	for {
-		mt, message, err := conn.ReadMessage()
+		//_, message, err := conn.ReadMessage()
+		var msg Message
+		err = conn.ReadJSON(&msg)
+
 		if err != nil {
 			// cliente desconectado o error de lectura
 			return
 		}
 
-		// Aquí solo hacemos un eco y logueamos el mensaje
-		fmt.Printf("Mensaje recibido: %s\n", string(message))
+		//Aquí solo hacemos un eco y logueamos el mensaje
+		//fmt.Printf("Mensaje recibido: %s\n", string(message))
 
-		err = conn.WriteMessage(mt, message)
-		if err != nil {
-			return
+		// err = conn.WriteMessage(mt, message)
+		// if err != nil {
+		// 	return
+		// }
+
+		for client := range clients {
+			client.WriteJSON(msg)
+			// client.WriteMessage(
+			// 	websocket.TextMessage,
+			// 	message,
+			// )
 		}
+
 	}
 
 }

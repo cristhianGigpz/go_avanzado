@@ -260,11 +260,28 @@
         const messagesContainer = document.getElementById('messages');
         const statusElement = document.getElementById('status');
         const statusText = document.getElementById('statusText');
+        uuid = crypto.randomUUID().substring(0, 8);
 
-        function addMessage(text, type = 'received') {
+        function addMessage(payload, type = 'received') {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${type}`;
-            messageDiv.textContent = text;
+
+            if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
+                const username = payload.username || 'Sistema';
+                const message = payload.message || '';
+
+                const sender = document.createElement('strong');
+                sender.textContent = `${username}: `;
+
+                const content = document.createElement('span');
+                content.textContent = message;
+
+                messageDiv.appendChild(sender);
+                messageDiv.appendChild(content);
+            } else {
+                messageDiv.textContent = payload;
+            }
+
             messagesContainer.appendChild(messageDiv);
             messagesContainer.scrollTop = messagesContainer.scrollHeight;
         }
@@ -295,7 +312,12 @@
                 };
 
                 ws.onmessage = (event) => {
-                    addMessage(event.data, 'received');
+                    try {
+                        const parsedMessage = JSON.parse(event.data);
+                        addMessage(parsedMessage, 'received');
+                    } catch (error) {
+                        addMessage(event.data, 'received');
+                    }
                 };
 
                 ws.onerror = (error) => {
@@ -319,10 +341,14 @@
             const message = messageInput.value.trim();
             
             if (!message) return;
-
+             // Generar un UUID corto para el usuario
             if (ws && ws.readyState === WebSocket.OPEN) {
-                ws.send(message);
-                addMessage(message, 'sent');
+                const payload = {
+                    username: 'Usuario: ' + uuid,
+                    message: message
+                };
+
+                ws.send(JSON.stringify(payload));
                 messageInput.value = '';
                 messageInput.focus();
             } else {
