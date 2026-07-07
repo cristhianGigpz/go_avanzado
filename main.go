@@ -11,6 +11,7 @@ import (
 	"go-avanzado/services"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -75,7 +76,10 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-var clients = make(map[*websocket.Conn]bool)
+var (
+	clients   = make(map[*websocket.Conn]bool)
+	clientsMu sync.Mutex // Protege el mapa de accesos simultáneos
+)
 
 type Message struct {
 	Username string `json:"username"`
@@ -95,8 +99,9 @@ func WebSocketHandler(c *gin.Context) {
 	// if err != nil {
 	// 	return
 	// }
-
+	clientsMu.Lock()
 	clients[conn] = true
+	clientsMu.Unlock()
 
 	defer func() {
 		delete(clients, conn)
@@ -121,7 +126,7 @@ func WebSocketHandler(c *gin.Context) {
 		// if err != nil {
 		// 	return
 		// }
-
+		clientsMu.Lock()
 		for client := range clients {
 			client.WriteJSON(msg)
 			// client.WriteMessage(
@@ -129,7 +134,7 @@ func WebSocketHandler(c *gin.Context) {
 			// 	message,
 			// )
 		}
-
+		clientsMu.Unlock()
 	}
 
 }

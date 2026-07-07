@@ -305,6 +305,7 @@
         function connectWebSocket() {
             try {
                 ws = new WebSocket('ws://localhost:8080/ws');
+                //const socket = new WebSocket("ws://localhost:8080/ws?token=JWT")
 
                 ws.onopen = () => {
                     addMessage('Conectado al servidor', 'system');
