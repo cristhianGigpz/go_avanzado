@@ -76,9 +76,20 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
+type room struct {
+	name    string
+	clients map[*websocket.Conn]bool
+}
+
+// var (
+//
+//	clients   = make(map[*websocket.Conn]bool)
+//	clientsMu sync.Mutex // Protege el mapa de accesos simultáneos
+//
+// )
 var (
-	clients   = make(map[*websocket.Conn]bool)
-	clientsMu sync.Mutex // Protege el mapa de accesos simultáneos
+	rooms      = make(map[string]*room)
+	roomsMutex sync.RWMutex
 )
 
 type Message struct {
@@ -103,14 +114,26 @@ func WebSocketHandler(c *gin.Context) {
 	// if err != nil {
 	// 	return
 	// }
-	clientsMu.Lock()
-	clients[conn] = true
-	clientsMu.Unlock()
+
+	// clientsMu.Lock()
+	// clients[conn] = true
+	// clientsMu.Unlock()
+	roomsMutex.Lock()
+	r, exists := rooms[sala]
+	if !exists {
+		r = &room{
+			name:    sala,
+			clients: make(map[*websocket.Conn]bool), // Inicialización vital
+		}
+		rooms[sala] = r
+	}
+	r.clients[conn] = true
+	roomsMutex.Unlock()
 
 	defer func() {
-		clientsMu.Lock()
-		delete(clients, conn)
-		clientsMu.Unlock()
+		roomsMutex.Lock()
+		delete(r.clients, conn)
+		roomsMutex.Unlock()
 		conn.Close()
 	}()
 
@@ -132,15 +155,18 @@ func WebSocketHandler(c *gin.Context) {
 		// if err != nil {
 		// 	return
 		// }
-		clientsMu.Lock()
-		for client := range clients {
+
+		roomsMutex.RLock()
+		for client := range r.clients {
 			client.WriteJSON(msg)
 			// client.WriteMessage(
 			// 	websocket.TextMessage,
 			// 	message,
 			// )
 		}
-		clientsMu.Unlock()
+		//clientsMu.Unlock()
+		roomsMutex.RUnlock()
+
 	}
 
 }
