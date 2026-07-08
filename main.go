@@ -87,7 +87,11 @@ type Message struct {
 }
 
 func WebSocketHandler(c *gin.Context) {
-
+	sala := c.Query("sala")
+	if sala == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Sala no especificada"})
+		return
+	}
 	conn, err := upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		return
@@ -104,7 +108,9 @@ func WebSocketHandler(c *gin.Context) {
 	clientsMu.Unlock()
 
 	defer func() {
+		clientsMu.Lock()
 		delete(clients, conn)
+		clientsMu.Unlock()
 		conn.Close()
 	}()
 

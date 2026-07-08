@@ -237,7 +237,17 @@
         </div>
 
         <div class="info">
-            Conectando a: <strong>ws://localhost:8080/ws</strong>
+            <label for="roomSelect">Sala:</label>
+            <select id="roomSelect">
+                <option value="ventas">ventas</option>
+                <option value="informatica">informatica</option>
+                <option value="marketing">marketing</option>
+                <option value="gerencia">gerencia</option>
+                <option value="general" selected>general</option>
+            </select>
+            <div style="margin-top: 10px;">
+                Conectando a: <strong id="connectionInfo">ws://localhost:8080/ws?sala=general</strong>
+            </div>
         </div>
 
         <div class="messages" id="messages"></div>
@@ -302,13 +312,23 @@
             }
         }
 
+        function getSelectedRoom() {
+            return document.getElementById('roomSelect').value;
+        }
+
+        function updateConnectionInfo() {
+            const room = getSelectedRoom();
+            document.getElementById('connectionInfo').textContent = `ws://localhost:8080/ws?sala=${room}`;
+        }
+
         function connectWebSocket() {
             try {
-                ws = new WebSocket('ws://localhost:8080/ws');
+                const room = getSelectedRoom();
+                ws = new WebSocket(`ws://localhost:8080/ws?sala=${room}`);
                 //const socket = new WebSocket("ws://localhost:8080/ws?token=JWT")
 
                 ws.onopen = () => {
-                    addMessage('Conectado al servidor', 'system');
+                    addMessage(`Conectado al servidor en sala: ${room}`, 'system');
                     updateStatus(true);
                 };
 
@@ -358,6 +378,15 @@
         }
 
         // Eventos
+        document.getElementById('roomSelect').addEventListener('change', () => {
+            updateConnectionInfo();
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                ws.close();
+            } else {
+                connectWebSocket();
+            }
+        });
+
         sendBtn.addEventListener('click', sendMessage);
 
         messageInput.addEventListener('keypress', (event) => {
@@ -368,6 +397,7 @@
         });
 
         // Conectar al cargar la página
+        updateConnectionInfo();
         connectWebSocket();
     </script>
 </body>
