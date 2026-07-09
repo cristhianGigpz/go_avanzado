@@ -97,7 +97,7 @@ type Message struct {
 	Message  string `json:"message"`
 }
 
-func WebSocketHandler(c *gin.Context) {
+func WebSocketHandler(c *gin.Context, rdb *redis.Client, ctx context.Context) {
 	sala := c.Query("sala")
 	if sala == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "Sala no especificada"})
@@ -126,7 +126,9 @@ func WebSocketHandler(c *gin.Context) {
 			clients: make(map[*websocket.Conn]bool), // Inicialización vital
 		}
 		rooms[sala] = r
+		go startRedisListenerForRoom(rdb, ctx, sala)
 	}
+
 	r.clients[conn] = true
 	roomsMutex.Unlock()
 
@@ -155,20 +157,62 @@ func WebSocketHandler(c *gin.Context) {
 		// if err != nil {
 		// 	return
 		// }
-
-		roomsMutex.RLock()
-		for client := range r.clients {
-			client.WriteJSON(msg)
-			// client.WriteMessage(
-			// 	websocket.TextMessage,
-			// 	message,
-			// )
+		msgBytes, err := json.Marshal(msg)
+		if err != nil {
+			continue
 		}
-		//clientsMu.Unlock()
-		roomsMutex.RUnlock()
+
+		redisChannel := "sala:" + sala
+		err = rdb.Publish(ctx, redisChannel, msgBytes).Err()
+		if err != nil {
+			continue
+		}
+
+		// roomsMutex.RLock()
+		// for client := range r.clients {
+		// 	client.WriteJSON(msg)
+		// 	// client.WriteMessage(
+		// 	// 	websocket.TextMessage,
+		// 	// 	message,
+		// 	// )
+		// }
+		// //clientsMu.Unlock()
+		// roomsMutex.RUnlock()
 
 	}
 
+}
+
+func startRedisListenerForRoom(rdb *redis.Client, ctx context.Context, sala string) {
+	redisChannel := "sala:" + sala
+	sub := rdb.Subscribe(ctx, redisChannel)
+	ch := sub.Channel()
+	defer sub.Close()
+
+	for msg := range ch {
+		var chatMsg Message
+		err := json.Unmarshal([]byte(msg.Payload), &chatMsg)
+		if err != nil {
+			continue
+		}
+
+		roomsMutex.RLock()
+		room, exists := rooms[sala]
+		if exists {
+			// Enviamos el JSON nativo solo a los clientes de esta sala
+			for client := range room.clients {
+				err := client.WriteJSON(chatMsg)
+				if err != nil {
+					client.Close()
+					roomsMutex.Lock()
+					delete(room.clients, client)
+					roomsMutex.Unlock()
+				}
+			}
+		}
+		roomsMutex.RUnlock()
+
+	}
 }
 
 func Init(db *gorm.DB) {
@@ -220,7 +264,9 @@ func Init(db *gorm.DB) {
 	})
 
 	//websocket//
-	r.GET("/ws", WebSocketHandler)
+	r.GET("/ws", func(c *gin.Context) {
+		WebSocketHandler(c, rdb, ctx)
+	})
 	//////////////////////////////
 
 	r.GET("/", func(c *gin.Context) {
